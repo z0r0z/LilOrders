@@ -56,7 +56,7 @@ contract LilOrdersTest is Test {
         assertEq(bob.balance, 1 ether);
     }
 
-    function testCancelOrder() public {
+    function testCancelOrderETH() public {
         LilOrders.Order memory order;
         order.tokenInStd = LilOrders.Standard(0);
         order.tokenOutStd = LilOrders.Standard(1);
