@@ -6,40 +6,31 @@ pragma solidity 0.8.25;
 /// @custom:coauthor @willmorriss4 (fixed make() vuln)
 /// @custom:coauthor josephdara.eth (fixed cancel() vuln)
 contract LilOrders {
-    error Cancelled();
     error OutOfTime();
     error Unauthorized();
-    error AlreadyExecuted();
-    error InsufficientETH();
+    error InvalidValue();
 
     event Made(bytes32 indexed orderHash);
 
     mapping(bytes32 orderHash => Order) orders;
 
-    enum Standard {
-        NATIVE,
-        TOKEN
-    }
+    address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     struct Order {
-        uint80 nonce;
-        Standard tokenInStd;
-        Standard tokenOutStd;
+        uint96 nonce;
         address tokenIn;
         address tokenOut;
-        uint256 amountIn; // works as NFT ID
-        uint256 amountOut; // works as NFT ID
+        uint256 amountIn; // Works as NFT ID.
+        uint256 amountOut; // Works as NFT ID.
         address maker;
-        uint40 validAfter;
-        uint40 validUntil;
-        bool executed;
-        bool cancelled;
+        uint48 validAfter;
+        uint48 validUntil;
     }
 
     function make(Order calldata order) public payable {
         if (msg.sender != order.maker) revert Unauthorized();
-        if (order.tokenInStd == Standard.NATIVE) {
-            if (msg.value != order.amountIn) revert InsufficientETH();
+        if (order.tokenIn == ETH) {
+            if (msg.value != order.amountIn) revert InvalidValue();
         }
         bytes32 orderHash = keccak256(abi.encode(order));
         orders[orderHash] = order;
@@ -47,23 +38,21 @@ contract LilOrders {
     }
 
     function cancel(bytes32 order) public {
-        Order storage _order = orders[order];
+        Order memory _order = orders[order];
+        delete orders[order];
         if (msg.sender != _order.maker) revert Unauthorized();
-        orders[order].cancelled = true;
         safeTransferETH(msg.sender, _order.amountIn);
     }
 
     function execute(bytes32 order) public payable {
-        Order storage _order = orders[order];
-        if (_order.cancelled) revert Cancelled();
-        if (_order.executed) revert AlreadyExecuted();
+        Order memory _order = orders[order];
+        delete orders[order];
         if (block.timestamp < _order.validAfter || block.timestamp > _order.validUntil) {
             revert OutOfTime();
         }
-        _order.executed = true;
-        if (_order.tokenInStd == Standard.NATIVE) safeTransferETH(msg.sender, _order.amountIn);
+        if (_order.tokenIn == ETH) safeTransferETH(msg.sender, _order.amountIn);
         else safeTransferFrom(_order.tokenIn, _order.maker, msg.sender, _order.amountIn);
-        if (_order.tokenOutStd == Standard.NATIVE) safeTransferETH(_order.maker, _order.amountOut);
+        if (_order.tokenOut == ETH) safeTransferETH(_order.maker, _order.amountOut);
         else safeTransferFrom(_order.tokenOut, msg.sender, _order.maker, _order.amountOut);
     }
 }

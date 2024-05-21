@@ -6,18 +6,16 @@ import {Test} from "../lib/forge-std/src/Test.sol";
 import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
 
 contract LilOrdersTest is Test {
-    error Cancelled();
+    error OutOfTime();
+    error Unauthorized();
+
+    address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     LilOrders internal orders;
     MockERC20 internal erc20;
 
     address alice;
     address bob;
-
-    enum Standard {
-        NATIVE,
-        TOKEN
-    }
 
     function setUp() public {
         orders = new LilOrders();
@@ -36,8 +34,7 @@ contract LilOrdersTest is Test {
 
     function testETHforERC20() public {
         LilOrders.Order memory order;
-        order.tokenInStd = LilOrders.Standard(0);
-        order.tokenOutStd = LilOrders.Standard(1);
+        order.tokenIn = ETH;
         order.tokenOut = address(erc20);
         order.amountIn = 1 ether;
         order.amountOut = 100 ether;
@@ -58,8 +55,7 @@ contract LilOrdersTest is Test {
 
     function testCancelOrderETH() public {
         LilOrders.Order memory order;
-        order.tokenInStd = LilOrders.Standard(0);
-        order.tokenOutStd = LilOrders.Standard(1);
+        order.tokenIn = ETH;
         order.tokenOut = address(erc20);
         order.amountIn = 1 ether;
         order.amountOut = 100 ether;
@@ -75,9 +71,28 @@ contract LilOrdersTest is Test {
         orders.cancel(keccak256(abi.encode(order)));
 
         vm.prank(bob);
-        vm.expectRevert(Cancelled.selector); // Guarded.
+        vm.expectRevert(OutOfTime.selector); // Guarded.
         orders.execute(keccak256(abi.encode(order)));
 
         assertEq(alice.balance, 1 ether); // Refunded.
+    }
+
+    function testCancelOrderFailUnauthorized() public {
+        LilOrders.Order memory order;
+        order.tokenIn = ETH;
+        order.tokenOut = address(erc20);
+        order.amountIn = 1 ether;
+        order.amountOut = 100 ether;
+        order.maker = alice;
+        order.validUntil = type(uint48).max;
+
+        vm.prank(alice);
+        assertEq(alice.balance, 1 ether);
+        orders.make{value: 1 ether}(order);
+        assertEq(alice.balance, 0);
+
+        vm.prank(bob);
+        vm.expectRevert(Unauthorized.selector); // Guarded.
+        orders.cancel(keccak256(abi.encode(order)));
     }
 }

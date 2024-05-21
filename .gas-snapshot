@@ -1,3 +1,4 @@
-LilOrdersTest:testCancelOrderETH() (gas: 180374)
-LilOrdersTest:testDeploy() (gas: 695052)
-LilOrdersTest:testETHforERC20() (gas: 210541)
+LilOrdersTest:testCancelOrderETH() (gas: 139002)
+LilOrdersTest:testCancelOrderFailUnauthorized() (gas: 110484)
+LilOrdersTest:testDeploy() (gas: 551490)
+LilOrdersTest:testETHforERC20() (gas: 165468)
