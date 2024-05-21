@@ -1,2 +1,3 @@
+LilOrdersTest:testCancelOrder() (gas: 180395)
 LilOrdersTest:testDeploy() (gas: 695030)
 LilOrdersTest:testETHforERC20() (gas: 210541)

@@ -6,6 +6,8 @@ import {Test} from "../lib/forge-std/src/Test.sol";
 import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
 
 contract LilOrdersTest is Test {
+    error Cancelled();
+
     LilOrders internal orders;
     MockERC20 internal erc20;
 
@@ -52,5 +54,30 @@ contract LilOrdersTest is Test {
 
         assertEq(erc20.balanceOf(alice), 100 ether);
         assertEq(bob.balance, 1 ether);
+    }
+
+    function testCancelOrder() public {
+        LilOrders.Order memory order;
+        order.tokenInStd = LilOrders.Standard(0);
+        order.tokenOutStd = LilOrders.Standard(1);
+        order.tokenOut = address(erc20);
+        order.amountIn = 1 ether;
+        order.amountOut = 100 ether;
+        order.maker = alice;
+        order.validUntil = type(uint40).max;
+
+        vm.prank(alice);
+        assertEq(alice.balance, 1 ether);
+        orders.make{value: 1 ether}(order);
+        assertEq(alice.balance, 0);
+
+        vm.prank(alice);
+        orders.cancel(keccak256(abi.encode(order)));
+
+        vm.prank(bob);
+        vm.expectRevert(Cancelled.selector); // Guarded.
+        orders.execute(keccak256(abi.encode(order)));
+
+        assertEq(alice.balance, 1 ether); // Refunded.
     }
 }
